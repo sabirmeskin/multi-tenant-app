@@ -11,12 +11,15 @@ Route::get('/', function () {
     ]);
 })->name('home');
 
-// Admin Routes (Central Domain Only)
-Route::middleware(['auth', 'verified'])->prefix('admin')->name('admin.')->group(function () {
+// Dashboard route (required by Laravel starter kit)
+Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('dashboard', function () {
         return Inertia::render('dashboard');
     })->name('dashboard');
+});
 
+// Admin Routes (Central Domain Only)
+Route::middleware(['auth', 'verified'])->prefix('admin')->name('admin.')->group(function () {
     // Tenant Management
     Route::resource('tenants', TenantController::class);
 });

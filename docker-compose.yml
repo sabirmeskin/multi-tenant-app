@@ -65,16 +65,18 @@ services:
       timeout: 5s
       retries: 5
 
-  # Node.js for building assets
-  node:
-    image: node:20-alpine
-    container_name: laravel_node
-    working_dir: /app
-    volumes:
-      - ./multitenant:/app
-    command: sh -c "npm install && npm run dev"
-    networks:
-      - laravel_network
+  # Node.js for building assets (DISABLED - using FrankenPHP container instead)
+  # The app container already has Node.js installed and works for both dev and build
+  # Uncomment this if you specifically need a separate Node container
+  # node:
+  #   image: node:20-alpine
+  #   container_name: laravel_node
+  #   working_dir: /app
+  #   volumes:
+  #     - ./multitenant:/app
+  #   command: sh -c "npm install && npm run dev"
+  #   networks:
+  #     - laravel_network
 
 volumes:
   postgres_data:
