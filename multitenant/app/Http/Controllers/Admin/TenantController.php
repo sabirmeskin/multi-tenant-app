@@ -3,7 +3,7 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
-use Stancl\Tenancy\Database\Models\Tenant;
+use App\Models\Tenant;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
@@ -17,12 +17,19 @@ class TenantController extends Controller
      */
     public function index(): Response
     {
-        $tenants = Tenant::with('domains')->get()->map(function ($tenant) {
+        $Domain = config('tenancy.domain_model');
+
+        $tenants = Tenant::all()->map(function ($tenant) use ($Domain) {
+            // Get domains directly from the Domain model
+            $domains = $Domain::where('tenant_id', $tenant->id)->pluck('domain')->toArray();
+
             return [
                 'id' => $tenant->id,
                 'created_at' => $tenant->created_at->format('Y-m-d H:i'),
-                'domains' => $tenant->domains->pluck('domain')->toArray(),
-                'data' => $tenant->data,
+                'domains' => $domains,
+                'data' => [
+                    'name' => $tenant->name,
+                ],
             ];
         });
 
@@ -44,30 +51,43 @@ class TenantController extends Controller
      */
     public function store(Request $request): RedirectResponse
     {
+        \Log::info('Tenant creation started', $request->all());
+
         $validated = $request->validate([
             'name' => 'required|string|max:255',
             'domain' => 'required|string|max:255|unique:domains,domain',
         ]);
 
+        \Log::info('Validation passed', $validated);
+
         DB::beginTransaction();
 
         try {
-            // Create the tenant
-            $tenant = Tenant::create([
-                'data' => [
-                    'name' => $validated['name'],
-                ],
-            ]);
+            $Domain = config('tenancy.domain_model');
 
-            // Create the domain
-            $tenant->domains()->create([
-                'domain' => $validated['domain'],
+            // Create the tenant with name in data
+            $tenant = Tenant::create([
+                'id' => \Illuminate\Support\Str::uuid()->toString(),
             ]);
+            $tenant->name = $validated['name'];  // This stores in data JSONB via magic setter
+            $tenant->save();
+
+            \Log::info('Tenant created', ['id' => $tenant->id, 'name' => $tenant->name]);
+
+            // Create the domain directly
+            $domain = new $Domain();
+            $domain->domain = $validated['domain'];
+            $domain->tenant_id = $tenant->id;
+            $domain->save();
+
+            \Log::info('Domain created', ['domain' => $domain->domain]);
 
             // Run tenant migrations
             \Artisan::call('tenants:migrate', [
                 '--tenants' => [$tenant->id],
             ]);
+
+            \Log::info('Migrations completed');
 
             // Add test data to tenant database
             $tenant->run(function () use ($tenant, $validated) {
@@ -79,12 +99,21 @@ class TenantController extends Controller
                 ]);
             });
 
+            \Log::info('Test data inserted');
+
             DB::commit();
+
+            \Log::info('Transaction committed successfully');
 
             return redirect()->route('admin.tenants.index')
                 ->with('success', 'Tenant created successfully!');
         } catch (\Exception $e) {
             DB::rollBack();
+
+            \Log::error('Tenant creation failed', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
 
             return back()->withErrors([
                 'error' => 'Failed to create tenant: ' . $e->getMessage(),
@@ -97,11 +126,14 @@ class TenantController extends Controller
      */
     public function edit(Tenant $tenant): Response
     {
+        $Domain = config('tenancy.domain_model');
+        $domains = $Domain::where('tenant_id', $tenant->id)->pluck('domain')->toArray();
+
         return Inertia::render('Admin/Tenants/Edit', [
             'tenant' => [
                 'id' => $tenant->id,
                 'name' => $tenant->data['name'] ?? '',
-                'domains' => $tenant->domains->pluck('domain')->toArray(),
+                'domains' => $domains,
             ],
         ]);
     }

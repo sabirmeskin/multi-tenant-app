@@ -1,0 +1,42 @@
+#!/usr/bin/env php
+<?php
+
+if (file_exists(__DIR__.'/vendor/autoload.php')) {
+    require __DIR__.'/vendor/autoload.php';
+} else {
+    exit(1);
+}
+
+$app = require_once __DIR__.'/bootstrap/app.php';
+$kernel = $app->make(Illuminate\Contracts\Console\Kernel::class);
+$kernel->bootstrap();
+
+// Create tenant using the custom model
+$tenant = new App\Models\Tenant();
+$tenant->name = 'Test Company';
+$tenant->save();
+
+echo "✓ Tenant created: {$tenant->id}\n";
+
+// Create domain using the relationship
+$tenant->domains()->create(['domain' => 'test.localhost']);
+echo "✓ Domain created: test.localhost\n";
+
+// Run migrations
+Illuminate\Support\Facades\Artisan::call('tenants:migrate', ['--tenants' => [$tenant->id]]);
+echo "✓ Migrations completed\n";
+
+// Insert test data
+$tenant->run(function () use ($tenant) {
+    Illuminate\Support\Facades\DB::table('test_data')->insert([
+        'message' => 'Welcome to Test Company!',
+        'tenant_identifier' => $tenant->id,
+        'created_at' => now(),
+        'updated_at' => now(),
+    ]);
+});
+
+echo "✓ Test data inserted\n\n";
+echo "SUCCESS! Tenant is ready.\n";
+echo "Add to hosts: 127.0.0.1   test.localhost\n";
+echo "Visit: http://test.localhost:8000/test-connection\n";
