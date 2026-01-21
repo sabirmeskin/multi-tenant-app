@@ -28,7 +28,7 @@ class TenantTestController extends Controller
         return Inertia::render('Tenant/TestConnection', [
             'tenant' => $currentTenant ? [
                 'id' => $currentTenant->id,
-                'name' => $currentTenant->data['name'] ?? 'Unknown',
+                'name' => $currentTenant->name ?? 'Unknown',
                 'domains' => $currentTenant->domains->pluck('domain')->toArray(),
             ] : null,
             'database_info' => $databaseInfo,

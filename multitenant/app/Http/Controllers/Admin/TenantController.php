@@ -60,7 +60,7 @@ class TenantController extends Controller
 
         \Log::info('Validation passed', $validated);
 
-        DB::beginTransaction();
+
 
         try {
             $Domain = config('tenancy.domain_model');
@@ -101,14 +101,14 @@ class TenantController extends Controller
 
             \Log::info('Test data inserted');
 
-            DB::commit();
+
 
             \Log::info('Transaction committed successfully');
 
             return redirect()->route('admin.tenants.index')
                 ->with('success', 'Tenant created successfully!');
         } catch (\Exception $e) {
-            DB::rollBack();
+
 
             \Log::error('Tenant creation failed', [
                 'error' => $e->getMessage(),
