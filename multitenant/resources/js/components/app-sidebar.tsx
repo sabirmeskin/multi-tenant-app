@@ -1,4 +1,4 @@
-import { Link } from '@inertiajs/react';
+import { Link, usePage } from '@inertiajs/react';
 import { BookOpen, Folder, LayoutGrid } from 'lucide-react';
 
 import { NavFooter } from '@/components/nav-footer';
@@ -26,6 +26,14 @@ const mainNavItems: NavItem[] = [
     },
 ];
 
+const tenantNavItems: NavItem[] = [
+    {
+        title: 'Test Data',
+        href: '/test-data',
+        icon: BookOpen,
+    },
+];
+
 const footerNavItems: NavItem[] = [
     {
         title: 'Repository',
@@ -40,6 +48,12 @@ const footerNavItems: NavItem[] = [
 ];
 
 export function AppSidebar() {
+    const { is_tenant } = usePage().props as any;
+
+    const navItems = is_tenant 
+        ? [...mainNavItems, ...tenantNavItems]
+        : mainNavItems;
+
     return (
         <Sidebar collapsible="icon" variant="inset">
             <SidebarHeader>
@@ -55,7 +69,7 @@ export function AppSidebar() {
             </SidebarHeader>
 
             <SidebarContent>
-                <NavMain items={mainNavItems} />
+                <NavMain items={navItems} />
             </SidebarContent>
 
             <SidebarFooter>
